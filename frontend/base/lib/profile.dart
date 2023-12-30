@@ -9,11 +9,12 @@ import 'package:http/http.dart' as http;
 import 'package:base/update.dart';
 import 'package:base/followerPage.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'postdisplaypage.dart';
 
 // Replace with your actual data fetching function
 Future<Map<String, dynamic>> fetchFollowCounts(int userId) async {
   //final response = await http.get(Uri.parse('http://localhost:3000/user/profile/$userId'));
-  final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/profile/$userId'));
+  final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/profile/$userId'));
   
   if (response.statusCode == 200) {
     final Map<String, dynamic> data = json.decode(response.body);
@@ -45,10 +46,15 @@ Future<Map<String, dynamic>> fetchFollowCounts(int userId) async {
 }
 
 class Post {
+  final int postId;
+  final String username;
   final String imageUrl;
   final String caption;
+  final String profilepicurl;
+  final int isLiked;
+  final int likeCount;
 
-  Post({ required this.imageUrl, required this.caption});
+  Post({required this.postId, required this.username, required this.imageUrl, required this.caption, required this.profilepicurl, required this.isLiked, required this.likeCount});
 }
 
 
@@ -90,24 +96,42 @@ class PostItem extends StatelessWidget {
 
   PostItem({required this.post});
   
-  @override
+ @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         Stack(
           alignment: Alignment.topRight,
           children: [
-            Image.network(
-              post.imageUrl,
-              width: MediaQuery.of(context).size.width,
-              height: 200.0,
-              fit: BoxFit.contain,
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PostDisplayPage(
+                  postId: post.postId,
+                  username: post.username,
+                  imageUrl: post.imageUrl,
+                  caption: post.caption,
+                  profilepicurl: post.profilepicurl,
+                  isLiked: post.isLiked,
+                  likeCount: post.likeCount,
+                ),
+                  ),
+                );
+              },
+              child: Image.network(
+                post.imageUrl,
+                width: MediaQuery.of(context).size.width,
+                height: 200.0,
+                fit: BoxFit.contain,
+              ),
             ),
             PopupMenuButton<String>(
-              icon: Container( // Customizing the three dots icon
+              icon: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.black,
+                  color: Colors.blue[900],
                 ),
                 padding: EdgeInsets.all(8.0),
                 child: Icon(
@@ -118,7 +142,6 @@ class PostItem extends StatelessWidget {
               onSelected: (value) async {
                 if (value == 'delete') {
                 } else if (value == 'update') {
-                  // Handle update post
                 }
               },
               itemBuilder: (BuildContext context) {
@@ -172,18 +195,29 @@ void initState() {
   _loadUserId(context);
 }
 
-Future<List<Post>> fetchUserPostsByUserId(int? userId) async {
+Future<List<Post>> fetchUserPostsByUserId() async {
   try {
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/loadcurrentuserposts/$userId'));
+    userId = await UserPreferences.getUserId();
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/loadcurrentuserposts/$userId'));
     if (response.statusCode == 200) {
-      final List<dynamic> postsList = json.decode(response.body)['posts'];
-      List<Post> postsDataList = postsList.map<Post>((post) {
-        return Post(
-          imageUrl: post['imageurl'] as String,
-          caption: post['caption'] as String,
-        );
-      }).toList();
-      return postsDataList;
+      final dynamic responseData = json.decode(response.body);
+      if (responseData['posts'][0]['postId'] != null) {
+        final List<dynamic> postsList = responseData['posts'];
+        List<Post> postsDataList = postsList.map<Post>((post) {
+          return Post(
+            postId: post['postId'],
+            username: post['username'] as String,
+            imageUrl: post['imageurl'] as String,
+            caption: post['caption'] as String,
+            profilepicurl: post['profilepicurl'],
+            isLiked: post['isLiked'],
+            likeCount: post['likeCount']
+          );
+        }).toList();
+        return postsDataList;
+      } else {
+        return [];
+      }
     } else {
       throw Exception('Failed to load posts. Status Code: ${response.statusCode}');
     }
@@ -193,9 +227,10 @@ Future<List<Post>> fetchUserPostsByUserId(int? userId) async {
   }
 }
 
+
 Future<void> _loadUserId(BuildContext context) async {
   userId = await UserPreferences.getUserId();
-  final posts = await fetchUserPostsByUserId(userId);
+  final posts = await fetchUserPostsByUserId();
   setState(() {
     userPosts=posts;
   });
@@ -208,7 +243,7 @@ Future<void> logout() async {
 
   Future<List<Map<String, String>>> fetchFollowersList() async {
   try {
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/followers/$userId'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/followers/$userId'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
       final List<dynamic> followersList = data['followersList'];
@@ -236,7 +271,7 @@ Future<void> logout() async {
 Future<List<Map<String, String>>> fetchFollowingList() async {
   try {
     //final response = await http.get(Uri.parse('http://localhost:3000/user/following/$userId'));
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/following/$userId'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/following/$userId'));
 
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
@@ -725,7 +760,7 @@ Future<List<Map<String, String>>> fetchFollowingList() async {
                         ),
                       ),
                     ),
-                    Divider(color: Colors.black,thickness: 4,),
+                    Divider(color: Colors.grey[400],thickness: 4,),
                     UserPosts(posts: userPosts),
                   ],
                 );

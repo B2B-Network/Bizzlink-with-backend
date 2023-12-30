@@ -48,7 +48,7 @@ List<Map<String, dynamic>> followingList = [];
 
 
 Future<void> _loadFollowingList(userId) async {
-  final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/following/$userId'));
+  final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/following/$userId'));
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
     final List<Map<String, dynamic>> followers = (data['followersList'] as List)

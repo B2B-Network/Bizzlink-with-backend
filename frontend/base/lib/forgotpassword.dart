@@ -5,10 +5,6 @@ import 'dart:math';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
-void main() {
-  runApp(MyApp());
-}
-
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -39,8 +35,8 @@ String generatedOtp = "";
   void _sendOTP() async {
     final email = emailController.text;
     final response =
-        await http.get(Uri.parse('http://192.168.1.9:3000/user/checkEmail/$email'));
-
+        await http.get(Uri.parse('http://172.17.73.110:3000/user/checkEmail/$email'));
+    
     if (response.statusCode == 200) {
       final result = jsonDecode(response.body);
 

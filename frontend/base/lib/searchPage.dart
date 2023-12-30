@@ -33,7 +33,7 @@ class _SearchPageState extends State<SearchPage> {
 
 Future<void> _loadUsers() async {
   userId = await UserPreferences.getUserId();
-      String apiUrl = 'http://192.168.1.9:3000/user/loadsearchpageusers/$userId';
+      String apiUrl = 'http://172.17.73.110:3000/user/loadsearchpageusers/$userId';
       if (selectedCategory != null) {
       apiUrl += '?category=$selectedCategory';
     }

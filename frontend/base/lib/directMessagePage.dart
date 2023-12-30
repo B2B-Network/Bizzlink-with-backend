@@ -43,7 +43,7 @@ Future<void> _loadUserId(BuildContext context) async {
 }
 
 Future<void> _loadUserIdFromUsername(String username) async {
-  final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/loaduseridfromusername/$username'));
+  final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/loaduseridfromusername/$username'));
   if (response.statusCode == 200) {
     final data = json.decode(response.body);
     receiverId = data['receiverId'][0]['userId'];
@@ -60,7 +60,7 @@ void _sendMessage() async {
   String messageText = _messageController.text.trim();
   if (messageText.isNotEmpty) {
     final response = await http.post(
-      Uri.parse('http://192.168.1.9:3000/user/sendmessage'),
+      Uri.parse('http://172.17.73.110:3000/user/sendmessage'),
       headers: {'Content-Type': 'application/json'},
       body: json.encode({
         'userId': userId,
@@ -84,7 +84,7 @@ void _sendMessage() async {
 
 Future<void> _loadMessages(userId, receiverId) async {
     final response = await http.get(
-        Uri.parse('http://192.168.1.9:3000/user/loadmessages/$userId/$receiverId'));
+        Uri.parse('http://172.17.73.110:3000/user/loadmessages/$userId/$receiverId'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       userId = await UserPreferences.getUserId();

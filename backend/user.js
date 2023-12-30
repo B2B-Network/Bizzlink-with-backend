@@ -103,7 +103,6 @@ router.route('/profile/:userId').get((req, res) => {
             if (error) {
                 return res.status(500).json({ error: 'Internal Server Error' });
             }
-
         const followersCount = followersResults[0].followers;
         const followingCount = followingResults[0].following;
         const username = userResults[0].username;
@@ -357,28 +356,31 @@ router.route('/loadposts/:userId').get((req, res) => {
   const userId = req.params.userId;
 
   const query = `
-    SELECT 
-      users.profilepicurl,
-      users.username,
-      posts.caption,
-      posts.imageurl,
-      posts.postId,
-      (CASE WHEN likes.userId IS NOT NULL THEN 1 ELSE 0 END) AS isLiked,
-      COUNT(likes.likeId) AS likeCount
-    FROM 
-      followers
-    JOIN 
-      users ON followers.followerUserId = users.userId
-    JOIN 
-      posts ON followers.followerUserId = posts.userId
-    LEFT JOIN
-      likes ON posts.postId = likes.postId AND likes.userId = ?
-    WHERE 
-      followers.userId = ?
-    GROUP BY
-      posts.postId
-    ORDER BY 
-      posts.postDate DESC;
+  SELECT 
+  users_posted.profilepicurl AS profilepicurl,
+  users_posted.username AS username,
+  posts.caption,
+  posts.imageurl,
+  posts.postId,
+  (CASE WHEN likes.userId IS NOT NULL THEN 1 ELSE 0 END) AS isLiked,
+  COUNT(likes.likeId) AS likeCount
+FROM 
+  followers
+JOIN 
+  users AS users_following ON followers.followerUserId = users_following.userId
+JOIN 
+  posts ON followers.userId = posts.userId
+JOIN
+  users AS users_posted ON posts.userId = users_posted.userId  -- Added this line
+LEFT JOIN
+  likes ON posts.postId = likes.postId AND likes.userId = ?
+WHERE 
+  followers.followerUserId = ?
+GROUP BY
+  posts.postId
+ORDER BY 
+  posts.postDate DESC;
+
   `;
 
 
@@ -401,6 +403,7 @@ router.route('/toggleLike/:postId').post((req, res) => {
   const query = isLikedValue
     ? 'DELETE FROM likes WHERE postId = ? AND userId = ?'
     : 'INSERT INTO likes (postId, userId) VALUES (?, ?)';
+
   db.query(query, [postId, userId], (err, result) => {
     if (err) {
       console.error('Error toggling like status: ' + err.stack);
@@ -408,9 +411,50 @@ router.route('/toggleLike/:postId').post((req, res) => {
       return;
     }
 
-    res.status(200).json({ success: true });
+    // Check if a like was added
+    if (!isLikedValue) {
+      // Get the post owner's userId
+      const getPostOwnerQuery = 'SELECT userId FROM posts WHERE postId = ?';
+      db.query(getPostOwnerQuery, [postId], (err, result) => {
+        if (err) {
+          console.error('Error getting post owner: ' + err.stack);
+          res.status(500).send('Internal Server Error');
+          return;
+        }
+
+        const postOwnerId = result[0].userId;
+
+        // Get the username of the user who liked the post
+        const getLikerUsernameQuery = 'SELECT username FROM users WHERE userId = ?';
+        db.query(getLikerUsernameQuery, [userId], (err, result) => {
+          if (err) {
+            console.error('Error getting liker username: ' + err.stack);
+            res.status(500).send('Internal Server Error');
+            return;
+          }
+
+          const likerUsername = result[0].username;
+
+          // Insert a notification for the post owner
+          const notificationText = `${likerUsername} liked your post.`;
+          const insertNotificationQuery = 'INSERT INTO notifications (userId, notificationText) VALUES (?, ?)';
+          db.query(insertNotificationQuery, [postOwnerId, notificationText], (err, result) => {
+            if (err) {
+              console.error('Error inserting notification: ' + err.stack);
+              res.status(500).send('Internal Server Error');
+              return;
+            }
+
+            res.status(200).json({ success: true });
+          });
+        });
+      });
+    } else {
+      res.status(200).json({ success: true });
+    }
   });
 });
+
 
 
   router.route('/loaduserposts/:username').get((req, res) => {
@@ -420,14 +464,31 @@ router.route('/toggleLike/:postId').post((req, res) => {
 
     db.query(userIdquery, [username], (error, results, fields) => {
             const userId = results[0].userid;
-    const query = `
-      SELECT 
-        imageurl, caption from posts where userid=?
-      ORDER BY 
-        posts.postDate DESC;
-    `;
+            const query = `
+    SELECT 
+      users.profilepicurl,
+      users.username,
+      posts.caption,
+      posts.imageurl,
+      posts.postId,
+      (CASE WHEN likes.userId IS NOT NULL THEN 1 ELSE 0 END) AS isLiked,
+      COUNT(likes.likeId) AS likeCount
+    FROM 
+      users
+    LEFT JOIN 
+      posts ON users.userId = posts.userId
+    LEFT JOIN
+      likes ON posts.postId = likes.postId AND likes.userId = ?
+    WHERE 
+      users.userId = ?
+    GROUP BY
+      posts.postId
+    ORDER BY 
+      posts.postDate DESC;
+  `;
+
   
-    db.query(query, [userId], (error, results) => {
+    db.query(query, [userId, userId], (error, results) => {
       if (error) {
         console.error(error);
         return res.status(500).json({ error: 'Internal Server Error'});
@@ -442,12 +503,29 @@ router.route('/loadcurrentuserposts/:userId').get((req, res) => {
   const userId = req.params.userId;
   const query = `
     SELECT 
-      imageurl, caption from posts where userid=?
+      users.profilepicurl,
+      users.username,
+      posts.caption,
+      posts.imageurl,
+      posts.postId,
+      (CASE WHEN likes.userId IS NOT NULL THEN 1 ELSE 0 END) AS isLiked,
+      COUNT(likes.likeId) AS likeCount
+    FROM 
+      users
+    LEFT JOIN 
+      posts ON users.userId = posts.userId
+    LEFT JOIN
+      likes ON posts.postId = likes.postId AND likes.userId = ?
+    WHERE 
+      users.userId = ?
+    GROUP BY
+      posts.postId
     ORDER BY 
       posts.postDate DESC;
   `;
 
-  db.query(query, [userId], (error, results) => {
+
+  db.query(query, [userId, userId], (error, results) => {
     if (error) {
       console.error(error);
       return res.status(500).json({ error: 'Internal Server Error'});
@@ -702,6 +780,96 @@ router.route('/recentmessages/:userId').get((req, res) => {
             }
         });
     }
+});
+
+router.route('/loadcomments/:postId').get((req, res) => {
+  const postId = req.params.postId;
+
+  const query = `
+  SELECT
+  c.commentId,
+  c.userId,
+  c.postId,
+  c.commentText,
+  DATE_FORMAT(c.commentDate, '%m-%Y') commentDate,
+  u.username,
+  u.profilepicurl
+FROM
+  comments c
+JOIN users u ON c.userId = u.userId
+WHERE
+  c.postId = ?;
+
+  `;
+  db.query(query, [postId], (error, results) => {
+    if (error) {
+      res.status(500).json({ error: 'Internal Server Error' });
+    } else {
+      res.status(200).json(results);
+    }
+  });
+});
+
+router.route('/postcomment').post((req, res) => {
+  const { userId, postId, commentText } = req.body;
+  const query = 'INSERT INTO comments (userId, postId, commentText) VALUES (?, ?, ?)';
+
+  db.query(query, [userId, postId, commentText], (err) => {
+    if (err) {
+      res.status(500).send('Internal Server Error');
+    } else {
+      // Get the post owner's userId
+      const getPostOwnerQuery = 'SELECT userId FROM posts WHERE postId = ?';
+      db.query(getPostOwnerQuery, [postId], (err, result) => {
+        if (err) {
+          console.error('Error getting post owner: ' + err.stack);
+          res.status(500).send('Internal Server Error');
+          return;
+        }
+
+        const postOwnerId = result[0].userId;
+
+        // Get the username of the user who posted the comment
+        const getCommenterUsernameQuery = 'SELECT username FROM users WHERE userId = ?';
+        db.query(getCommenterUsernameQuery, [userId], (err, result) => {
+          if (err) {
+            console.error('Error getting commenter username: ' + err.stack);
+            res.status(500).send('Internal Server Error');
+            return;
+          }
+
+          const commenterUsername = result[0].username;
+
+          // Insert a notification for the post owner
+          const notificationText = `${commenterUsername} commented on your post.`;
+          const insertNotificationQuery = 'INSERT INTO notifications (userId, notificationText) VALUES (?, ?)';
+          db.query(insertNotificationQuery, [postOwnerId, notificationText], (err, result) => {
+            if (err) {
+              console.error('Error inserting notification: ' + err.stack);
+              res.status(500).send('Internal Server Error');
+              return;
+            }
+
+            res.status(200).send();
+          });
+        });
+      });
+    }
+  });
+});
+
+
+router.route('/deletecomment/:commentId').post((req, res) => {
+  const commentId = req.params.commentId;
+  const query = 'Delete from comments where commentId=?';
+  
+  db.query(query, [commentId], (err) => {
+    if (err) {
+      res.status(500).send('Internal Server Error');
+    } else {
+      res.status(200).send();
+    }
+  });
 });
 
   module.exports = router;

@@ -44,9 +44,9 @@ class _ListPageState extends State<ListPage> {
       }
     } catch (e) {
       print('Error uploading image to Firebase Storage: $e');
-      return ''; // Return an empty string if there's an error
+      return '';
     }
-    return ''; // Return an empty string if there's no image or user ID
+    return '';
   }
 
   TextEditingController captionController = TextEditingController();
@@ -59,7 +59,7 @@ class _ListPageState extends State<ListPage> {
 
   Future<void> _loadUserId(BuildContext context) async {
     userId = await UserPreferences.getUserId();
-    setState(() {}); // Trigger a rebuild to reflect the updated userId in your UI
+    setState(() {});
   }
 
   @override
@@ -211,7 +211,7 @@ class _ListPageState extends State<ListPage> {
   }
 
   Future<http.Response> post(String imageurl, String caption, int userId) async {
-    var uri = Uri.parse("http://192.168.1.9:3000/user/post");
+    var uri = Uri.parse("http://172.17.73.110:3000/user/post");
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, dynamic> data = {
       'imageurl': '$imageurl',

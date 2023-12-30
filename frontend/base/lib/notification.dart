@@ -33,7 +33,7 @@ class _NotificationPageState extends State<NotificationPage> {
   Future<void> _loadNotifications() async {
     try {
       final response = await http.get(
-        Uri.parse('http://192.168.1.9:3000/user/loadnotifications/$userId'),
+        Uri.parse('http://172.17.73.110:3000/user/loadnotifications/$userId'),
         // Replace with your server endpoint to fetch notifications
       );
 

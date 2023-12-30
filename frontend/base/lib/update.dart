@@ -733,7 +733,7 @@ class Service {
 
   Future<Map<String, dynamic>> getUserDetails(int userId) async {
     //var uri = Uri.parse("http://localhost:3000/user/profile/$userId");
-    var uri = Uri.parse("http://192.168.1.9:3000/user/profile/$userId");
+    var uri = Uri.parse("http://172.17.73.110:3000/user/profile/$userId");
 
     try {
       var response = await http.get(uri);
@@ -775,7 +775,7 @@ class Service {
       ) async {
     // Create uri
     //var uri = Uri.parse("http://localhost:3000/user/update/$userId");
-    var uri = Uri.parse("http://192.168.1.9:3000/user/update/$userId");
+    var uri = Uri.parse("http://172.17.73.110:3000/user/update/$userId");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
     Map<String, dynamic> data = {

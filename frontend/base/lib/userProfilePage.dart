@@ -10,12 +10,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:base/followerPage.dart';
 import 'package:url_launcher/url_launcher.dart';
-//import 'package:path_provider/path_provider.dart';
+import 'postdisplaypage.dart';
 
 Future<Map<String, dynamic>> fetchuserprofile(String username) async {
   
   //final response = await http.get(Uri.parse('http://localhost:3000/user/userprofile/$username'));
-  final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/userprofile/$username'));
+  final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/userprofile/$username'));
   
   if (response.statusCode == 200) {
     final Map<String, dynamic> data = json.decode(response.body);
@@ -46,7 +46,7 @@ Future<Map<String, dynamic>> fetchuserprofile(String username) async {
 Future<List<Map<String, String>>> fetchFollowersList(username) async {
   try {
     //final response = await http.get(Uri.parse('http://localhost:3000/user/userprofilefollowers/$username'));
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/userprofilefollowers/$username'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/userprofilefollowers/$username'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
       final List<dynamic> followersList = data['followersList'];
@@ -69,7 +69,7 @@ Future<List<Map<String, String>>> fetchFollowersList(username) async {
 Future<List<Map<String, String>>> fetchFollowingList(username) async {
   try {
     //final response = await http.get(Uri.parse('http://localhost:3000/user/userprofilefollowing/$username'));
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/userprofilefollowing/$username'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/userprofilefollowing/$username'));
     if (response.statusCode == 200) {
       final Map<String, dynamic> data = json.decode(response.body);
       final List<dynamic> followingList = data['followersList'];
@@ -91,12 +91,16 @@ Future<List<Map<String, String>>> fetchFollowingList(username) async {
 }
 
 class Post {
+  final int postId;
+  final String username;
   final String imageUrl;
   final String caption;
+  final String profilepicurl;
+  final int isLiked;
+  final int likeCount;
 
-  Post({ required this.imageUrl, required this.caption});
+  Post({required this.postId, required this.username, required this.imageUrl, required this.caption, required this.profilepicurl, required this.isLiked, required this.likeCount});
 }
-
 
 class UserPosts extends StatelessWidget {
   final List<Post> posts;
@@ -114,7 +118,6 @@ class UserPosts extends StatelessWidget {
           style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
         ),
         SizedBox(height: 10),
-        // Use ListView.builder for scrolling
         ListView.builder(
           shrinkWrap: true,
           physics: NeverScrollableScrollPhysics(),
@@ -140,11 +143,29 @@ class PostItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Image.network(
-          post.imageUrl,
-          width: MediaQuery.of(context).size.width, // Set the width to the screen width
-          height: 200.0, // Set a fixed height as per your requirement
-          fit: BoxFit.contain, // Maintain the aspect ratio without cropping
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PostDisplayPage(
+                    postId: post.postId,
+                    username: post.username,
+                    imageUrl: post.imageUrl,
+                    caption: post.caption,
+                    profilepicurl: post.profilepicurl,
+                    isLiked: post.isLiked,
+                    likeCount: post.likeCount,
+                  ),
+                  ),
+                );
+          },
+          child: Image.network(
+            post.imageUrl,
+            width: MediaQuery.of(context).size.width, 
+            height: 200.0, 
+            fit: BoxFit.contain, 
+          ),
         ),
         SizedBox(height: 8),
         Text(post.caption),
@@ -177,13 +198,18 @@ class _UserProfilePageState extends State<UserProfilePage>{
 
   Future<List<Post>> fetchUserPostsByUsername(String username) async {
   try {
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/loaduserposts/$username'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/loaduserposts/$username'));
     if (response.statusCode == 200) {
       final List<dynamic> postsList = json.decode(response.body)['posts'];
       List<Post> postsDataList = postsList.map<Post>((post) {
         return Post(
+          postId: post['postId'],
+          username: post['username'] as String,
           imageUrl: post['imageurl'] as String,
           caption: post['caption'] as String,
+          profilepicurl: post['profilepicurl'],
+          isLiked: post['isLiked'],
+          likeCount: post['likeCount']
         );
       }).toList();
       return postsDataList;
@@ -196,32 +222,33 @@ class _UserProfilePageState extends State<UserProfilePage>{
   }
 }
 
-  Future<void> fetchUserProfile() async {
-    try {
-      final Map<String, dynamic> userProfile = await fetchuserprofile(widget.username);
-      userId = userProfile['userId'];
-      currentUserId = await UserPreferences.getUserId();
-      if (currentUserId == userId) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (BuildContext context) => ProfilePage(),
-          ),
-        );
-      }
-      await checkFollowingStatus(userId);
-      final posts = await fetchUserPostsByUsername(widget.username);
+Future<void> fetchUserProfile() async {
+  try {
+    final Map<String, dynamic> userProfile = await fetchuserprofile(widget.username);
+    userId = userProfile['userId'] as int;
+    currentUserId = await UserPreferences.getUserId();
+    if (currentUserId == userId) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (BuildContext context) => ProfilePage(),
+        ),
+      );
+    }
+    await checkFollowingStatus(userId);
+    final posts = await fetchUserPostsByUsername(widget.username);
     setState(() {
       userPosts = posts;
     });
-    } catch (error) {
-      print('Error fetching user profile: $error');
-    }
+  } catch (error) {
+    print('Error fetching user profile: $error');
   }
+}
+
 
   Future<void> checkFollowingStatus(int userId) async {
     try {
       final currentUserId = await UserPreferences.getUserId();
-      final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/checkfollowing/$currentUserId?userId=$userId'));
+      final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/checkfollowing/$currentUserId?userId=$userId'));
       if (response.statusCode == 200) {
         final String status = response.body;
         setState(() {
@@ -423,7 +450,7 @@ class _UserProfilePageState extends State<UserProfilePage>{
                                      await checkFollowingStatus(userId);
                                       if (!isFollowing) {
                                         final currentUserId = await UserPreferences.getUserId();
-                                        final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/followuser/$currentUserId?userId=$userId'));
+                                        final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/followuser/$currentUserId?userId=$userId'));
                                         if (response.body == 'yes') {
                                             Navigator.of(context).pushReplacement(
                                               MaterialPageRoute(
@@ -433,7 +460,7 @@ class _UserProfilePageState extends State<UserProfilePage>{
                                           }
                                         } else {
                                         final currentUserId = await UserPreferences.getUserId();
-                                        final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/unfollowuser/$currentUserId?userId=$userId'));
+                                        final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/unfollowuser/$currentUserId?userId=$userId'));
                                         if(response.body=='yes')
                                         {
                                           Navigator.of(context).pushReplacement(
@@ -651,12 +678,10 @@ class _UserProfilePageState extends State<UserProfilePage>{
                           ),
                         ),
                         SizedBox(width: 20),
-                        Divider(thickness:4, color:Colors.black),
+                        Divider(thickness:4, color:Colors.grey[400]),
                         UserPosts(posts: userPosts),
                       ],
-                      
                     ),
-                    
                   ],
                 );
               }

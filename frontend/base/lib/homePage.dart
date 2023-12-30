@@ -2,6 +2,7 @@ import 'package:base/profile.dart';
 import 'package:flutter/material.dart';
 import 'post.dart';
 import 'notification.dart';
+import 'postdisplaypage.dart';
 import 'searchPage.dart';
 import 'package:base/userid.dart';
 import 'package:base/directMessagePage.dart';
@@ -33,18 +34,16 @@ void initState() {
 Future<void> _fetchPosts() async {
   try {
     userId = await UserPreferences.getUserId();
-    final response = await http.get(Uri.parse('http://192.168.1.9:3000/user/loadposts/$userId'));
+    final response = await http.get(Uri.parse('http://172.17.73.110:3000/user/loadposts/$userId'));
     if (response.statusCode == 200) {
       setState(() {
         final decodedResponse = jsonDecode(response.body);
         posts = decodedResponse;
       });
     } else {
-      // Handle errors
       print('Failed to load posts: ${response.statusCode}');
     }
   } catch (e) {
-    // Handle exceptions
     print('Error fetching posts: $e');
   }
 }
@@ -53,7 +52,7 @@ void _handleLikeButton(int postId, int? isLiked) async {
   try {
     userId = await UserPreferences.getUserId();
     final response = await http.post(
-      Uri.parse('http://192.168.1.9:3000/user/toggleLike/$postId'),
+      Uri.parse('http://172.17.73.110:3000/user/toggleLike/$postId'),
       body: {
         'isLiked': isLiked == 1 ? '0' : '1',
         'userIds': userId.toString(),
@@ -120,10 +119,9 @@ Future<void> _loadUserId(BuildContext context) async {
       leading: IconButton(
         icon: Icon(
           Icons.account_circle,
-          color: Colors.grey[300], // Set the color to grey[300]
+          color: Colors.grey[300],
         ),
         onPressed: () {
-          // Placeholder: Add logic for the profile icon here
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -154,7 +152,7 @@ Future<void> _loadUserId(BuildContext context) async {
           isLiked:post['isLiked'],
           likeCount:post['likeCount']
         ),
-        Divider(), // Add this line to add a divider after each post
+        Divider(),
       ],
     );
   },
@@ -266,7 +264,6 @@ Future<void> _loadUserId(BuildContext context) async {
             ],
           ),
         ),
-        // Caption
         SizedBox(height: 8),
         Text(
           caption,
@@ -275,13 +272,29 @@ Future<void> _loadUserId(BuildContext context) async {
             fontFamily: 'Mplus1p',
           ),
         ),
-        // Post image
-        SizedBox(height: 8),
-        Image.network(
-          imageUrl,
-          width: MediaQuery.of(context).size.width, // Set the width to the screen width
-          height: 200.0, // Set a fixed height as per your requirement
-          fit: BoxFit.contain, // Maintain the aspect ratio without cropping
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDisplayPage(
+                  postId: postId,
+                  username: username,
+                  imageUrl: imageUrl,
+                  caption: caption,
+                  profilepicurl: profilepicurl,
+                  isLiked: isLiked,
+                  likeCount: likeCount,
+                ),
+              ),
+            );
+          },
+          child: Image.network(
+            imageUrl,
+            width: MediaQuery.of(context).size.width,
+            height: 200.0,
+            fit: BoxFit.contain,
+          ),
         ),
         // Like and Message icons
         SizedBox(height: 8),
@@ -296,7 +309,6 @@ Future<void> _loadUserId(BuildContext context) async {
                     color: isLiked==1 ? Colors.red : null,
                   ),
                   onPressed: () {
-                    print(postId);
                    _handleLikeButton(postId, isLiked);
                   },
                 ),
@@ -304,6 +316,25 @@ Future<void> _loadUserId(BuildContext context) async {
                 Text('Like'),
               ],
             ),
+            IconButton(
+                    icon: Icon(Icons.comment),
+                    onPressed: () {
+                      Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDisplayPage(
+                  postId: postId,
+                  username: username,
+                  imageUrl: imageUrl,
+                  caption: caption,
+                  profilepicurl: profilepicurl,
+                  isLiked: isLiked,
+                  likeCount: likeCount,
+                ),
+              ),
+            );
+                    },
+                  ),
             IconButton(
               icon: Icon(Icons.message),
               onPressed: () {

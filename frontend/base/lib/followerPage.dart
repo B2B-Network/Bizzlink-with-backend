@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'homePage.dart';
 import 'post.dart';
 import 'notification.dart';
 import 'searchPage.dart';
@@ -19,7 +19,7 @@ class _FollowerPageState extends State<FollowerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Color(0xFF0245A3), // Dark blue color for the entire app bar
+        backgroundColor: Color(0xFF0245A3),
         title: Text(
           'Followers',
           style: TextStyle(
@@ -100,6 +100,14 @@ class _FollowerPageState extends State<FollowerPage> {
         onTap: (int index) {
           // Add navigation logic for the bottom navigation items here
           switch (index) {
+            case 0:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HomePage(),
+                ),
+              );
+              break;
             case 1:
               Navigator.push(
                 context,
